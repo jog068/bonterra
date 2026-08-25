@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ApiError } from '@/lib/api';
-import { AMOUNT_RE, dollarsToCents } from '@/lib/format';
+import { AMOUNT_RE, centsToDollars, dollarsToCents } from '@/lib/money';
 
 // Form-local schema: amount is entered in dollars and converted to integer
 // cents at the API boundary; everything else reuses the shared contract.
@@ -48,7 +48,7 @@ export function transactionToFormValues(t: Transaction): TransactionFormValues {
   return {
     date: t.date,
     description: t.description,
-    amount: (t.amountCents / 100).toFixed(2),
+    amount: centsToDollars(t.amountCents),
     type: t.type,
     category: t.category,
   };

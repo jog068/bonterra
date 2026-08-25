@@ -1,5 +1,5 @@
 import { createTransactionSchema, type CreateTransaction } from '@budget/shared';
-import { AMOUNT_RE, dollarsToCents } from '@/lib/format';
+import { AMOUNT_RE, dollarsToCents } from '@/lib/money';
 
 export type CanonicalField = 'date' | 'description' | 'amount' | 'type' | 'category';
 
