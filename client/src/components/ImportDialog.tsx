@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Table,
@@ -21,9 +22,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { useTransactions } from '@/hooks/queries';
 import { ApiError } from '@/lib/api';
 import { formatCents } from '@/lib/format';
-import type { ImportRow } from '@/lib/import/normalize';
+import { markDuplicates, type PreviewRow } from '@/lib/import/duplicates';
 import { parseCsv } from '@/lib/import/parse';
 
 interface ImportDialogProps {
@@ -35,9 +37,13 @@ interface ImportDialogProps {
 export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps) {
   const [csvText, setCsvText] = useState('');
   const [inputError, setInputError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<{ rows: ImportRow[]; selected: Set<number> } | null>(null);
+  const [preview, setPreview] = useState<{ rows: PreviewRow[]; selected: Set<number> } | null>(
+    null,
+  );
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Unfiltered list, used to flag probable re-imports in the preview.
+  const { data: existingTransactions } = useTransactions({});
 
   const resetAndClose = (nextOpen: boolean) => {
     if (!nextOpen) {
@@ -56,10 +62,20 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
       return;
     }
     setInputError(null);
+    const rows = markDuplicates(result.rows, existingTransactions ?? []);
     setPreview({
-      rows: result.rows,
-      selected: new Set(result.rows.filter((r) => r.status === 'valid').map((r) => r.index)),
+      rows,
+      // Duplicates start excluded; the user can still opt them in.
+      selected: new Set(
+        rows.filter((r) => r.status === 'valid' && !r.duplicate).map((r) => r.index),
+      ),
     });
+  };
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return;
+    setCsvText(await file.text());
+    setInputError(null);
   };
 
   const toggleRow = (index: number, checked: boolean) => {
@@ -73,7 +89,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
   const handleImport = async () => {
     if (!preview) return;
     const chosen = preview.rows.filter(
-      (r): r is Extract<ImportRow, { status: 'valid' }> =>
+      (r): r is Extract<PreviewRow, { status: 'valid' }> =>
         r.status === 'valid' && preview.selected.has(r.index),
     );
     setIsSubmitting(true);
@@ -116,6 +132,15 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                 onChange={(e) => setCsvText(e.target.value)}
                 placeholder={'date,description,amount\n2026-08-01,Paycheck,3200.00\n2026-08-03,Groceries,-84.25'}
                 className="min-h-40 font-mono text-xs"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="import-file">…or upload a .csv file</Label>
+              <Input
+                id="import-file"
+                type="file"
+                accept=".csv,text/csv"
+                onChange={(e) => handleFile(e.target.files?.[0])}
               />
             </div>
             {inputError && (
@@ -171,7 +196,14 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                         </TableCell>
                         <TableCell>{row.index + 1}</TableCell>
                         <TableCell className="whitespace-nowrap">{row.transaction.date}</TableCell>
-                        <TableCell>{row.transaction.description}</TableCell>
+                        <TableCell>
+                          {row.transaction.description}
+                          {row.duplicate && (
+                            <Badge variant="outline" className="ml-2">
+                              Duplicate
+                            </Badge>
+                          )}
+                        </TableCell>
                         <TableCell>{row.transaction.category}</TableCell>
                         <TableCell>
                           <Badge
@@ -210,7 +242,9 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                 Back
               </Button>
               <Button onClick={handleImport} disabled={selectedCount === 0 || isSubmitting}>
-                {isSubmitting ? 'Importing…' : `Import ${selectedCount} rows`}
+                {isSubmitting
+                  ? 'Importing…'
+                  : `Import ${selectedCount} row${selectedCount === 1 ? '' : 's'}`}
               </Button>
             </DialogFooter>
           </div>
