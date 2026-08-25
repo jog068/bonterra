@@ -6,3 +6,4 @@ server/data/
 *.db-journal
 *.db-wal
 *.db-shm
+.playwright-mcp/
