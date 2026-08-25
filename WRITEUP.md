@@ -8,7 +8,7 @@ Decisions worth calling out:
 
 - **Integer cents, not floats.** `amountCents` is an integer end to end; dollars exist only in the form and the formatter. A test pins the classic `0.1 + 0.2` drift case.
 - **Dates are `YYYY-MM-DD` strings.** Transactions are calendar facts, not instants; date-only strings sort correctly and can't shift a day across timezones. They never round-trip through `Date` for display.
-- **The summary respects active filters.** The spec doesn't say whether filtering the list should change the summary. I decided it should — the panel should describe what you're looking at — so `/api/summary` accepts the same params via the same WHERE-clause builder, and the UI labels the panel "Filtered view" when a filter is active.
+- **The summary respects active filters.** The spec doesn't say whether filtering the list should change the summary. I decided it should — the panel should describe what you're looking at — so `/api/summary` accepts the same params via the same WHERE-clause builder, and the totals always match the transactions in view.
 - **PUT is a full replacement** validated by the create schema — the simplest honest contract.
 - **Errors are one envelope** (`{ error: { message, fieldErrors? } }`) produced by a single Express middleware from Zod issues.
 

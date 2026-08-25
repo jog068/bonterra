@@ -51,12 +51,11 @@ export default function App() {
 
   const { data: transactions, isPending, isError, error } = useTransactions(apiFilters);
   const { data: summary } = useSummary(apiFilters);
-  const isFiltered = Boolean(apiFilters.type || apiFilters.category || apiFilters.search);
 
   return (
     <main className="mx-auto max-w-4xl space-y-6 p-6">
       <h1 className="text-2xl font-semibold">Budget Tracker</h1>
-      <SummaryPanel summary={summary} isFiltered={isFiltered} />
+      <SummaryPanel summary={summary} />
       <Card>
         <CardHeader>
           <CardTitle>Transactions</CardTitle>
