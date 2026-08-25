@@ -25,8 +25,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { useTransactions } from '@/hooks/queries';
 import { ApiError } from '@/lib/api';
 import { formatCents } from '@/lib/format';
-import { markDuplicates, type PreviewRow } from '@/lib/import/duplicates';
-import { parseCsv } from '@/lib/import/parse';
+import {
+  buildPreview,
+  selectedTransactions,
+  selectionSummary,
+  toggleRow,
+  type Preview,
+} from '@/lib/import/preview';
 
 interface ImportDialogProps {
   open: boolean;
@@ -37,9 +42,7 @@ interface ImportDialogProps {
 export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps) {
   const [csvText, setCsvText] = useState('');
   const [inputError, setInputError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<{ rows: PreviewRow[]; selected: Set<number> } | null>(
-    null,
-  );
+  const [preview, setPreview] = useState<Preview | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Unfiltered list, used to flag probable re-imports in the preview. Preview
@@ -59,20 +62,13 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
 
   const handlePreview = () => {
     if (existingTransactions === undefined && !duplicateCheckUnavailable) return; // still loading
-    const result = parseCsv(csvText);
+    const result = buildPreview(csvText, existingTransactions ?? []);
     if (!result.ok) {
       setInputError(result.error);
       return;
     }
     setInputError(null);
-    const rows = markDuplicates(result.rows, existingTransactions ?? []);
-    setPreview({
-      rows,
-      // Duplicates start excluded; the user can still opt them in.
-      selected: new Set(
-        rows.filter((r) => r.status === 'valid' && !r.duplicate).map((r) => r.index),
-      ),
-    });
+    setPreview(result.preview);
   };
 
   const handleFile = async (file: File | undefined) => {
@@ -81,24 +77,16 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
     setInputError(null);
   };
 
-  const toggleRow = (index: number, checked: boolean) => {
-    if (!preview) return;
-    const selected = new Set(preview.selected);
-    if (checked) selected.add(index);
-    else selected.delete(index);
-    setPreview({ ...preview, selected });
+  const handleToggle = (index: number, checked: boolean) => {
+    setPreview((current) => (current ? toggleRow(current, index, checked) : current));
   };
 
   const handleImport = async () => {
     if (!preview) return;
-    const chosen = preview.rows.filter(
-      (r): r is Extract<PreviewRow, { status: 'valid' }> =>
-        r.status === 'valid' && preview.selected.has(r.index),
-    );
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      await onImport(chosen.map((r) => r.transaction));
+      await onImport(selectedTransactions(preview));
       handleOpenChange(false);
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors?.rows) {
@@ -111,7 +99,8 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
     }
   };
 
-  const selectedCount = preview?.selected.size ?? 0;
+  const summary = preview ? selectionSummary(preview) : null;
+  const selectedCount = summary?.selectedCount ?? 0;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -169,11 +158,11 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
         ) : (
           <div className="space-y-3">
             <p className="text-sm" aria-live="polite">
-              <strong>{selectedCount}</strong> of {preview.rows.length} rows will be imported
-              {preview.rows.some((r) => r.status === 'invalid') && (
+              <strong>{selectedCount}</strong> of {summary?.totalRows} rows will be imported
+              {(summary?.invalidCount ?? 0) > 0 && (
                 <span className="text-muted-foreground">
                   {' '}
-                  ({preview.rows.filter((r) => r.status === 'invalid').length} invalid)
+                  ({summary?.invalidCount} invalid)
                 </span>
               )}
             </p>
@@ -206,7 +195,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                           <Checkbox
                             aria-label={`Include row ${row.index + 1}`}
                             checked={preview.selected.has(row.index)}
-                            onCheckedChange={(checked) => toggleRow(row.index, checked === true)}
+                            onCheckedChange={(checked) => handleToggle(row.index, checked === true)}
                           />
                         </TableCell>
                         <TableCell>{row.index + 1}</TableCell>
