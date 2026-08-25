@@ -9,3 +9,11 @@ export function useTransactions(filters: TransactionFilters) {
     placeholderData: keepPreviousData,
   });
 }
+
+export function useSummary(filters: TransactionFilters) {
+  return useQuery({
+    queryKey: ['summary', filters],
+    queryFn: () => api.getSummary(filters),
+    placeholderData: keepPreviousData,
+  });
+}

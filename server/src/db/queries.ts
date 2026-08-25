@@ -1,5 +1,5 @@
 import { and, desc, eq, sql, type SQL } from 'drizzle-orm';
-import type { TransactionFilters } from '@budget/shared';
+import type { Summary, TransactionFilters } from '@budget/shared';
 import type { Db } from './index';
 import { transactions } from './schema';
 
@@ -26,4 +26,20 @@ export function listTransactions(db: Db, filters: TransactionFilters) {
     .where(transactionFilterClause(filters))
     .orderBy(desc(transactions.date), desc(transactions.id))
     .all();
+}
+
+export function summarizeTransactions(db: Db, filters: TransactionFilters): Summary {
+  const rows = db
+    .select({
+      type: transactions.type,
+      total: sql<number>`COALESCE(SUM(${transactions.amountCents}), 0)`,
+    })
+    .from(transactions)
+    .where(transactionFilterClause(filters))
+    .groupBy(transactions.type)
+    .all();
+
+  const totalIncomeCents = rows.find((r) => r.type === 'income')?.total ?? 0;
+  const totalExpenseCents = rows.find((r) => r.type === 'expense')?.total ?? 0;
+  return { totalIncomeCents, totalExpenseCents, netCents: totalIncomeCents - totalExpenseCents };
 }

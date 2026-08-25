@@ -1,4 +1,4 @@
-import type { CreateTransaction, Transaction, TransactionFilters } from '@budget/shared';
+import type { CreateTransaction, Summary, Transaction, TransactionFilters } from '@budget/shared';
 
 export class ApiError extends Error {
   constructor(
@@ -53,4 +53,6 @@ export const api = {
     }),
   deleteTransaction: (id: string) =>
     request<void>(`/api/transactions/${id}`, { method: 'DELETE' }),
+  getSummary: (filters: TransactionFilters = {}) =>
+    request<Summary>(`/api/summary${toQueryString(filters)}`),
 };

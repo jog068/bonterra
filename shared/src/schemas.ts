@@ -38,7 +38,14 @@ export const transactionFiltersSchema = z.object({
   search: z.preprocess(emptyToUndefined, z.string().max(200).optional()),
 });
 
+export const summarySchema = z.object({
+  totalIncomeCents: z.number().int().nonnegative(),
+  totalExpenseCents: z.number().int().nonnegative(),
+  netCents: z.number().int(),
+});
+
 export type TransactionType = z.infer<typeof transactionTypeSchema>;
+export type Summary = z.infer<typeof summarySchema>;
 export type CreateTransaction = z.infer<typeof createTransactionSchema>;
 export type Transaction = z.infer<typeof transactionSchema>;
 export type TransactionFilters = z.infer<typeof transactionFiltersSchema>;
