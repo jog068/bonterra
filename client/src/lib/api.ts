@@ -1,4 +1,4 @@
-import type { Transaction } from '@budget/shared';
+import type { CreateTransaction, Transaction } from '@budget/shared';
 
 export class ApiError extends Error {
   constructor(
@@ -34,4 +34,6 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   listTransactions: () => request<Transaction[]>('/api/transactions'),
+  createTransaction: (input: CreateTransaction) =>
+    request<Transaction>('/api/transactions', { method: 'POST', body: JSON.stringify(input) }),
 };

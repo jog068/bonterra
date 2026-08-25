@@ -1,0 +1,7 @@
+- main [ref=e3]:
+  - heading "Budget Tracker" [level=1] [ref=e4]
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]: Transactions
+      - button "Add transaction" [ref=e9]
+    - paragraph [ref=e11]: Loading…

@@ -1,9 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { TransactionFormDialog } from '@/components/TransactionFormDialog';
 import { TransactionTable } from '@/components/TransactionTable';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useCreateTransaction } from '@/hooks/mutations';
 import { api } from '@/lib/api';
 
 export default function App() {
+  const [addOpen, setAddOpen] = useState(false);
+  const createTransaction = useCreateTransaction();
   const {
     data: transactions,
     isPending,
@@ -17,6 +23,9 @@ export default function App() {
       <Card>
         <CardHeader>
           <CardTitle>Transactions</CardTitle>
+          <CardAction>
+            <Button onClick={() => setAddOpen(true)}>Add transaction</Button>
+          </CardAction>
         </CardHeader>
         <CardContent>
           {isPending ? (
@@ -30,6 +39,14 @@ export default function App() {
           )}
         </CardContent>
       </Card>
+      <TransactionFormDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        title="Add transaction"
+        description="Log an income or expense."
+        submitLabel="Add"
+        onSubmit={(values) => createTransaction.mutateAsync(values)}
+      />
     </main>
   );
 }
