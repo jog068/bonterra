@@ -5,10 +5,12 @@ import {
   type CreateTransaction,
   type Transaction,
 } from '@budget/shared';
-import { useEffect } from 'react';
+import { CalendarIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Dialog,
   DialogContent,
@@ -19,6 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Select,
   SelectContent,
@@ -27,6 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ApiError } from '@/lib/api';
+import { isoDateToLocalDate, localDateToIsoDate } from '@/lib/date';
 import { AMOUNT_RE, centsToDollars, dollarsToCents } from '@/lib/money';
 
 // Form-local schema: amount is entered in dollars and converted to integer
@@ -68,6 +72,50 @@ const TYPE_ITEMS = [
 ];
 
 const CATEGORY_ITEMS = CATEGORIES.map((c) => ({ value: c, label: c }));
+
+function DatePicker({
+  id,
+  value,
+  onChange,
+  invalid,
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  invalid: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = value ? isoDateToLocalDate(value) : undefined;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <Button
+            type="button"
+            variant="outline"
+            id={id}
+            aria-invalid={invalid}
+            className="w-full justify-start font-normal"
+          >
+            <CalendarIcon className="text-muted-foreground" />
+            {value || <span className="text-muted-foreground">Pick a date</span>}
+          </Button>
+        }
+      />
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={selected}
+          defaultMonth={selected}
+          onSelect={(day) => {
+            onChange(day ? localDateToIsoDate(day) : '');
+            setOpen(false);
+          }}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 interface TransactionFormDialogProps {
   open: boolean;
@@ -138,7 +186,18 @@ export function TransactionFormDialog({
           <div className="grid grid-cols-2 gap-4">
             <Field>
               <FieldLabel htmlFor="tx-date">Date</FieldLabel>
-              <Input id="tx-date" type="date" aria-invalid={!!errors.date} {...register('date')} />
+              <Controller
+                control={control}
+                name="date"
+                render={({ field }) => (
+                  <DatePicker
+                    id="tx-date"
+                    value={field.value}
+                    onChange={field.onChange}
+                    invalid={!!errors.date}
+                  />
+                )}
+              />
               <FieldError errors={[errors.date]} />
             </Field>
             <Field>

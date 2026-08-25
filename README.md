@@ -35,7 +35,7 @@ The Vite dev server proxies `/api` to the backend, so no CORS setup is needed.
 ## Tests & typechecking
 
 ```sh
-npm test          # vitest across all workspaces (117 tests)
+npm test          # vitest across all workspaces (123 tests)
 npm run typecheck # tsc across all workspaces
 ```
 

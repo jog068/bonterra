@@ -67,6 +67,7 @@ export function TransactionTable({ transactions, onEdit, onDelete }: Transaction
               <Button
                 variant="ghost"
                 size="icon-sm"
+                className="hover:bg-destructive/10 hover:text-destructive"
                 aria-label={`Delete ${t.description}`}
                 onClick={() => onDelete(t)}
               >
