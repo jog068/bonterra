@@ -1,10 +1,15 @@
 import { Router } from 'express';
 import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 import { createTransactionSchema, transactionFiltersSchema } from '@budget/shared';
 import type { Db } from '../db';
-import { listTransactions } from '../db/queries';
+import { insertTransactions, listTransactions } from '../db/queries';
 import { transactions } from '../db/schema';
 import { HttpError } from '../errors';
+
+const importRequestSchema = z.object({
+  transactions: z.array(createTransactionSchema).min(1).max(1000),
+});
 
 export function transactionsRouter(db: Db) {
   const router = Router();
@@ -18,6 +23,23 @@ export function transactionsRouter(db: Db) {
     const data = createTransactionSchema.parse(req.body);
     const [row] = db.insert(transactions).values(data).returning().all();
     res.status(201).json(row);
+  });
+
+  // The client validates rows at preview time, so a 400 here is
+  // defense-in-depth; errors come back indexed by row for debuggability.
+  router.post('/import', (req, res) => {
+    const parsed = importRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const rows = parsed.error.issues.map((issue) =>
+        issue.path.length >= 3
+          ? `Row ${Number(issue.path[1]) + 1}, ${String(issue.path[2])}: ${issue.message}`
+          : issue.message,
+      );
+      res.status(400).json({ error: { message: 'Validation failed', fieldErrors: { rows } } });
+      return;
+    }
+    const inserted = insertTransactions(db, parsed.data.transactions);
+    res.status(201).json({ inserted });
   });
 
   // Full replacement: the body is the same contract as create.

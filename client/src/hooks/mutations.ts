@@ -28,3 +28,8 @@ export function useDeleteTransaction() {
   const onSuccess = useInvalidateOnSuccess();
   return useMutation({ mutationFn: api.deleteTransaction, onSuccess });
 }
+
+export function useImportTransactions() {
+  const onSuccess = useInvalidateOnSuccess();
+  return useMutation({ mutationFn: api.importTransactions, onSuccess });
+}

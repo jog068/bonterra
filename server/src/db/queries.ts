@@ -1,5 +1,5 @@
 import { and, desc, eq, sql, type SQL } from 'drizzle-orm';
-import type { Summary, TransactionFilters } from '@budget/shared';
+import type { CreateTransaction, Summary, TransactionFilters } from '@budget/shared';
 import type { Db } from './index';
 import { transactions } from './schema';
 
@@ -26,6 +26,14 @@ export function listTransactions(db: Db, filters: TransactionFilters) {
     .where(transactionFilterClause(filters))
     .orderBy(desc(transactions.date), desc(transactions.id))
     .all();
+}
+
+/** Bulk insert, all-or-nothing: any bad row rolls back the whole batch. */
+export function insertTransactions(db: Db, rows: CreateTransaction[]): number {
+  return db.transaction((tx) => {
+    tx.insert(transactions).values(rows).run();
+    return rows.length;
+  });
 }
 
 export function summarizeTransactions(db: Db, filters: TransactionFilters): Summary {

@@ -1,6 +1,7 @@
 import type { Transaction, TransactionFilters } from '@budget/shared';
 import { useMemo, useState } from 'react';
 import { DeleteTransactionDialog } from '@/components/DeleteTransactionDialog';
+import { ImportDialog } from '@/components/ImportDialog';
 import { DEFAULT_FILTERS, FiltersBar, type FilterState } from '@/components/FiltersBar';
 import {
   TransactionFormDialog,
@@ -12,6 +13,7 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/componen
 import {
   useCreateTransaction,
   useDeleteTransaction,
+  useImportTransactions,
   useUpdateTransaction,
 } from '@/hooks/mutations';
 import { SummaryPanel } from '@/components/SummaryPanel';
@@ -20,6 +22,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
 export default function App() {
   const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState<Transaction | null>(null);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
@@ -27,6 +30,7 @@ export default function App() {
   const createTransaction = useCreateTransaction();
   const updateTransaction = useUpdateTransaction();
   const deleteTransaction = useDeleteTransaction();
+  const importTransactions = useImportTransactions();
 
   const debouncedSearch = useDebouncedValue(filters.search, 300);
   const apiFilters: TransactionFilters = useMemo(
@@ -49,7 +53,10 @@ export default function App() {
       <Card>
         <CardHeader>
           <CardTitle>Transactions</CardTitle>
-          <CardAction>
+          <CardAction className="flex gap-2">
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              Import CSV
+            </Button>
             <Button onClick={() => setAddOpen(true)}>Add transaction</Button>
           </CardAction>
         </CardHeader>
@@ -91,6 +98,11 @@ export default function App() {
           if (!editing) return Promise.resolve();
           return updateTransaction.mutateAsync({ id: editing.id, input: values });
         }}
+      />
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImport={(transactions) => importTransactions.mutateAsync(transactions)}
       />
       <DeleteTransactionDialog
         transaction={deleting}

@@ -1,6 +1,7 @@
+import type { CreateTransaction } from '@budget/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createDb, type Db } from './index';
-import { listTransactions, summarizeTransactions } from './queries';
+import { insertTransactions, listTransactions, summarizeTransactions } from './queries';
 import { transactions } from './schema';
 
 let db: Db;
@@ -91,5 +92,26 @@ describe('summarizeTransactions', () => {
       ])
       .run();
     expect(summarizeTransactions(db, {}).totalExpenseCents).toBe(30);
+  });
+});
+
+describe('insertTransactions', () => {
+  const newRows: CreateTransaction[] = [
+    { date: '2026-08-20', description: 'Book', amountCents: 1500, type: 'expense', category: 'Other' },
+    { date: '2026-08-21', description: 'Refund', amountCents: 900, type: 'income', category: 'Other' },
+  ];
+
+  it('inserts every row and reports the count', () => {
+    expect(insertTransactions(db, newRows)).toBe(2);
+    expect(listTransactions(db, {})).toHaveLength(FIXTURES.length + 2);
+  });
+
+  it('leaves the database unchanged when any row fails', () => {
+    const poisoned = [
+      ...newRows,
+      { ...newRows[0], description: null } as unknown as CreateTransaction,
+    ];
+    expect(() => insertTransactions(db, poisoned)).toThrow();
+    expect(listTransactions(db, {})).toHaveLength(FIXTURES.length);
   });
 });

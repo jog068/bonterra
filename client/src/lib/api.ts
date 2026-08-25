@@ -55,4 +55,9 @@ export const api = {
     request<void>(`/api/transactions/${id}`, { method: 'DELETE' }),
   getSummary: (filters: TransactionFilters = {}) =>
     request<Summary>(`/api/summary${toQueryString(filters)}`),
+  importTransactions: (transactions: CreateTransaction[]) =>
+    request<{ inserted: number }>('/api/transactions/import', {
+      method: 'POST',
+      body: JSON.stringify({ transactions }),
+    }),
 };
