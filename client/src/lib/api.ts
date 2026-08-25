@@ -36,4 +36,11 @@ export const api = {
   listTransactions: () => request<Transaction[]>('/api/transactions'),
   createTransaction: (input: CreateTransaction) =>
     request<Transaction>('/api/transactions', { method: 'POST', body: JSON.stringify(input) }),
+  updateTransaction: (id: string, input: CreateTransaction) =>
+    request<Transaction>(`/api/transactions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    }),
+  deleteTransaction: (id: string) =>
+    request<void>(`/api/transactions/${id}`, { method: 'DELETE' }),
 };

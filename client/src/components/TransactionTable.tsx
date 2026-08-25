@@ -1,5 +1,7 @@
 import type { Transaction } from '@budget/shared';
+import { PencilIcon, Trash2Icon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -11,7 +13,13 @@ import {
 import { formatCents } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
-export function TransactionTable({ transactions }: { transactions: Transaction[] }) {
+interface TransactionTableProps {
+  transactions: Transaction[];
+  onEdit: (transaction: Transaction) => void;
+  onDelete: (transaction: Transaction) => void;
+}
+
+export function TransactionTable({ transactions, onEdit, onDelete }: TransactionTableProps) {
   if (transactions.length === 0) {
     return <p className="text-muted-foreground py-8 text-center">No transactions found.</p>;
   }
@@ -24,6 +32,9 @@ export function TransactionTable({ transactions }: { transactions: Transaction[]
           <TableHead>Category</TableHead>
           <TableHead>Type</TableHead>
           <TableHead className="text-right">Amount</TableHead>
+          <TableHead>
+            <span className="sr-only">Actions</span>
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -43,6 +54,24 @@ export function TransactionTable({ transactions }: { transactions: Transaction[]
             >
               {t.type === 'income' ? '+' : '−'}
               {formatCents(t.amountCents)}
+            </TableCell>
+            <TableCell className="text-right whitespace-nowrap">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Edit ${t.description}`}
+                onClick={() => onEdit(t)}
+              >
+                <PencilIcon />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Delete ${t.description}`}
+                onClick={() => onDelete(t)}
+              >
+                <Trash2Icon />
+              </Button>
             </TableCell>
           </TableRow>
         ))}

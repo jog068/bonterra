@@ -1,5 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CATEGORIES, createTransactionSchema, type CreateTransaction } from '@budget/shared';
+import {
+  CATEGORIES,
+  createTransactionSchema,
+  type CreateTransaction,
+  type Transaction,
+} from '@budget/shared';
 import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -38,6 +43,16 @@ const formSchema = z.object({
 });
 
 export type TransactionFormValues = z.infer<typeof formSchema>;
+
+export function transactionToFormValues(t: Transaction): TransactionFormValues {
+  return {
+    date: t.date,
+    description: t.description,
+    amount: (t.amountCents / 100).toFixed(2),
+    type: t.type,
+    category: t.category,
+  };
+}
 
 const EMPTY_VALUES: TransactionFormValues = {
   date: '',
