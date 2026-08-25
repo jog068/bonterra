@@ -42,10 +42,11 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
   );
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Unfiltered list, used to flag probable re-imports in the preview.
+  // Unfiltered list, used to flag probable re-imports in the preview. Preview
+  // is gated on it so duplicate detection never silently runs against nothing.
   const { data: existingTransactions } = useTransactions({});
 
-  const resetAndClose = (nextOpen: boolean) => {
+  const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
       setCsvText('');
       setInputError(null);
@@ -56,13 +57,14 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
   };
 
   const handlePreview = () => {
+    if (existingTransactions === undefined) return; // button is disabled until loaded
     const result = parseCsv(csvText);
     if (!result.ok) {
       setInputError(result.error);
       return;
     }
     setInputError(null);
-    const rows = markDuplicates(result.rows, existingTransactions ?? []);
+    const rows = markDuplicates(result.rows, existingTransactions);
     setPreview({
       rows,
       // Duplicates start excluded; the user can still opt them in.
@@ -96,7 +98,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
     setSubmitError(null);
     try {
       await onImport(chosen.map((r) => r.transaction));
-      resetAndClose(false);
+      handleOpenChange(false);
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors?.rows) {
         setSubmitError(err.fieldErrors.rows.join('; '));
@@ -111,7 +113,7 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
   const selectedCount = preview?.selected.size ?? 0;
 
   return (
-    <Dialog open={open} onOpenChange={resetAndClose}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Import CSV</DialogTitle>
@@ -149,10 +151,13 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
               </p>
             )}
             <DialogFooter>
-              <Button variant="outline" onClick={() => resetAndClose(false)}>
+              <Button variant="outline" onClick={() => handleOpenChange(false)}>
                 Cancel
               </Button>
-              <Button onClick={handlePreview} disabled={csvText.trim() === ''}>
+              <Button
+                onClick={handlePreview}
+                disabled={csvText.trim() === '' || existingTransactions === undefined}
+              >
                 Preview
               </Button>
             </DialogFooter>

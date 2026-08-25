@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ApiError } from '@/lib/api';
-import { dollarsToCents } from '@/lib/format';
+import { AMOUNT_RE, dollarsToCents } from '@/lib/format';
 
 // Form-local schema: amount is entered in dollars and converted to integer
 // cents at the API boundary; everything else reuses the shared contract.
@@ -36,7 +36,7 @@ const formSchema = z.object({
   description: createTransactionSchema.shape.description,
   amount: z
     .string()
-    .regex(/^\d+(\.\d{1,2})?$/, 'Enter a positive amount like 12.34')
+    .regex(AMOUNT_RE, 'Enter a positive amount like 12.34')
     .refine((value) => Number(value) > 0, 'Amount must be greater than zero'),
   type: createTransactionSchema.shape.type,
   category: createTransactionSchema.shape.category,

@@ -32,6 +32,13 @@ export default function App() {
   const deleteTransaction = useDeleteTransaction();
   const importTransactions = useImportTransactions();
 
+  // Stable while the edit dialog is open — a fresh object every render would
+  // re-fire the form's reset effect and wipe in-progress edits.
+  const editingDefaults = useMemo(
+    () => (editing ? transactionToFormValues(editing) : undefined),
+    [editing],
+  );
+
   const debouncedSearch = useDebouncedValue(filters.search, 300);
   const apiFilters: TransactionFilters = useMemo(
     () => ({
@@ -93,7 +100,7 @@ export default function App() {
         title="Edit transaction"
         description="Update this income or expense."
         submitLabel="Save changes"
-        defaultValues={editing ? transactionToFormValues(editing) : undefined}
+        defaultValues={editingDefaults}
         onSubmit={(values) => {
           if (!editing) return Promise.resolve();
           return updateTransaction.mutateAsync({ id: editing.id, input: values });

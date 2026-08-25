@@ -28,6 +28,27 @@ export function listTransactions(db: Db, filters: TransactionFilters) {
     .all();
 }
 
+export function createTransaction(db: Db, data: CreateTransaction) {
+  const [row] = db.insert(transactions).values(data).returning().all();
+  return row;
+}
+
+/** Full replacement; returns undefined when no row has that id. */
+export function updateTransaction(db: Db, id: string, data: CreateTransaction) {
+  const [row] = db
+    .update(transactions)
+    .set(data)
+    .where(eq(transactions.id, id))
+    .returning()
+    .all();
+  return row;
+}
+
+/** Returns false when no row has that id. */
+export function deleteTransaction(db: Db, id: string): boolean {
+  return db.delete(transactions).where(eq(transactions.id, id)).run().changes > 0;
+}
+
 /** Bulk insert, all-or-nothing: any bad row rolls back the whole batch. */
 export function insertTransactions(db: Db, rows: CreateTransaction[]): number {
   return db.transaction((tx) => {

@@ -5,7 +5,7 @@ describe('normalizeHeader', () => {
   it.each([
     ['Date', 'date'],
     ['Posted Date', 'date'],
-    ['﻿Transaction Date', 'date'],
+    ['\uFEFFTransaction Date', 'date'],
     [' MEMO ', 'description'],
     ['Description', 'description'],
     ['Details', 'description'],
@@ -136,6 +136,12 @@ describe('buildImportRow', () => {
     const row = buildImportRow({ date: '2026-08-01', description: '  ', amount: '4.50' }, 7);
     expect(row.status).toBe('invalid');
     if (row.status === 'invalid') expect(row.errors.join(' ')).toMatch(/description/i);
+  });
+
+  it('flags a zero amount with a clear reason', () => {
+    const row = buildImportRow({ date: '2026-08-01', description: 'Freebie', amount: '$0.00' }, 9);
+    expect(row.status).toBe('invalid');
+    if (row.status === 'invalid') expect(row.errors.join(' ')).toMatch(/greater than zero/i);
   });
 
   it('flags an unrecognized explicit type', () => {

@@ -1,4 +1,5 @@
 import { createTransactionSchema, type CreateTransaction } from '@budget/shared';
+import { AMOUNT_RE, dollarsToCents } from '@/lib/format';
 
 export type CanonicalField = 'date' | 'description' | 'amount' | 'type' | 'category';
 
@@ -25,7 +26,7 @@ const HEADER_SYNONYMS: Record<string, CanonicalField> = {
 };
 
 export function normalizeHeader(header: string): CanonicalField | null {
-  const key = header.replace(/^﻿/, '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const key = header.replace(/^\uFEFF/, '').trim().toLowerCase().replace(/\s+/g, ' ');
   return HEADER_SYNONYMS[key] ?? null;
 }
 
@@ -48,11 +49,23 @@ export function normalizeAmount(raw: string): { cents: number; negative: boolean
   }
   value = value.replace(/^\$\s*/, '').replace(/,/g, '');
 
-  if (!/^\d+(\.\d{1,2})?$/.test(value)) return null;
-  const [dollars, cents = ''] = value.split('.');
-  const total = Number(dollars) * 100 + Number((cents + '00').slice(0, 2));
+  if (!AMOUNT_RE.test(value)) return null;
+  const total = dollarsToCents(value);
   if (total === 0) return null;
   return { cents: total, negative };
+}
+
+/** True when the raw value parses as an amount but equals zero. */
+function isZeroAmount(raw: string): boolean {
+  const value = raw
+    .trim()
+    .replace(/^\((.*)\)$/, '$1')
+    .trim()
+    .replace(/^-/, '')
+    .trim()
+    .replace(/^\$\s*/, '')
+    .replace(/,/g, '');
+  return AMOUNT_RE.test(value) && Number(value) === 0;
 }
 
 /** Accepts YYYY-MM-DD or M/D/YYYY (US bank exports); returns YYYY-MM-DD. */
@@ -100,8 +113,15 @@ export function buildImportRow(
   const description = (record.description ?? '').trim();
   if (!description) errors.push('Description is blank');
 
-  const amount = normalizeAmount(record.amount ?? '');
-  if (!amount) errors.push(`Unrecognized amount "${record.amount ?? ''}"`);
+  const rawAmount = record.amount ?? '';
+  const amount = normalizeAmount(rawAmount);
+  if (!amount) {
+    errors.push(
+      isZeroAmount(rawAmount)
+        ? 'Amount must be greater than zero'
+        : `Unrecognized amount "${rawAmount}"`,
+    );
+  }
 
   // An explicit type column wins; otherwise the amount's sign decides.
   let type: CreateTransaction['type'] | null = null;

@@ -35,7 +35,7 @@ The Vite dev server proxies `/api` to the backend, so no CORS setup is needed.
 ## Tests & typechecking
 
 ```sh
-npm test          # vitest across all workspaces (66 tests)
+npm test          # vitest across all workspaces (82 tests)
 npm run typecheck # tsc across all workspaces
 ```
 
@@ -47,4 +47,4 @@ None are required. See `.env.example` for the optional `PORT` override for the A
 
 - **Persistence** is SQLite via Drizzle ORM (`better-sqlite3`). The database file is created automatically at `server/data/budget.db` on first boot; the committed migration runs on startup and ~30 seed transactions are inserted only when the table is empty. Delete the file to reset.
 - **Amounts are stored as integer cents** (`amountCents`) and **dates as `YYYY-MM-DD` strings** — both deliberate extensions of the spec's data model, documented in `WRITEUP.md`.
-- **CSV import** (the enhancement) accepts pasted text or an uploaded file. Required columns: `date`, `description`, `amount` (synonyms like `Posted Date`/`Memo` are recognized); `type` and `category` are optional — a missing type is inferred from the amount's sign, and a missing category defaults to `Other`. Try `sample-import.csv` in the repo root: it includes messy-but-valid rows, two broken rows, and one duplicate of the seed data so the preview has something to flag.
+- **CSV import** (the enhancement) accepts pasted text or an uploaded file. Required columns: `date`, `description`, `amount` (synonyms like `Posted Date`/`Memo` are recognized); `type` and `category` are optional — a missing type is inferred from the amount's sign, and a missing category defaults to `Other`. Imports are capped at 1,000 rows per request. Try `sample-import.csv` in the repo root: it includes messy-but-valid rows, two broken rows, and one duplicate of the seed data so the preview has something to flag.
