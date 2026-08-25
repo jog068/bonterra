@@ -29,6 +29,16 @@ export const transactionSchema = createTransactionSchema.extend({
   id: z.string(),
 });
 
+// Query params arrive as strings; treat empty values as "no filter".
+const emptyToUndefined = (value: unknown) => (value === '' ? undefined : value);
+
+export const transactionFiltersSchema = z.object({
+  type: z.preprocess(emptyToUndefined, transactionTypeSchema.optional()),
+  category: z.preprocess(emptyToUndefined, z.string().max(50).optional()),
+  search: z.preprocess(emptyToUndefined, z.string().max(200).optional()),
+});
+
 export type TransactionType = z.infer<typeof transactionTypeSchema>;
 export type CreateTransaction = z.infer<typeof createTransactionSchema>;
 export type Transaction = z.infer<typeof transactionSchema>;
+export type TransactionFilters = z.infer<typeof transactionFiltersSchema>;

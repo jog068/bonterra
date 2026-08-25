@@ -1,7 +1,7 @@
-import type { Transaction } from '@budget/shared';
-import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import type { Transaction, TransactionFilters } from '@budget/shared';
+import { useMemo, useState } from 'react';
 import { DeleteTransactionDialog } from '@/components/DeleteTransactionDialog';
+import { DEFAULT_FILTERS, FiltersBar, type FilterState } from '@/components/FiltersBar';
 import {
   TransactionFormDialog,
   transactionToFormValues,
@@ -14,23 +14,30 @@ import {
   useDeleteTransaction,
   useUpdateTransaction,
 } from '@/hooks/mutations';
-import { api } from '@/lib/api';
+import { useTransactions } from '@/hooks/queries';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
 export default function App() {
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState<Transaction | null>(null);
+  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
 
   const createTransaction = useCreateTransaction();
   const updateTransaction = useUpdateTransaction();
   const deleteTransaction = useDeleteTransaction();
 
-  const {
-    data: transactions,
-    isPending,
-    isError,
-    error,
-  } = useQuery({ queryKey: ['transactions'], queryFn: api.listTransactions });
+  const debouncedSearch = useDebouncedValue(filters.search, 300);
+  const apiFilters: TransactionFilters = useMemo(
+    () => ({
+      type: filters.type === 'all' ? undefined : filters.type,
+      category: filters.category === 'all' ? undefined : filters.category,
+      search: debouncedSearch.trim() === '' ? undefined : debouncedSearch.trim(),
+    }),
+    [filters.type, filters.category, debouncedSearch],
+  );
+
+  const { data: transactions, isPending, isError, error } = useTransactions(apiFilters);
 
   return (
     <main className="mx-auto max-w-4xl space-y-6 p-6">
@@ -42,7 +49,8 @@ export default function App() {
             <Button onClick={() => setAddOpen(true)}>Add transaction</Button>
           </CardAction>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <FiltersBar filters={filters} onChange={setFilters} />
           {isPending ? (
             <p className="text-muted-foreground py-8 text-center">Loading…</p>
           ) : isError ? (

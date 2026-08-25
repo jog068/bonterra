@@ -1,20 +1,17 @@
 import { Router } from 'express';
-import { desc, eq } from 'drizzle-orm';
-import { createTransactionSchema } from '@budget/shared';
+import { eq } from 'drizzle-orm';
+import { createTransactionSchema, transactionFiltersSchema } from '@budget/shared';
 import type { Db } from '../db';
+import { listTransactions } from '../db/queries';
 import { transactions } from '../db/schema';
 import { HttpError } from '../errors';
 
 export function transactionsRouter(db: Db) {
   const router = Router();
 
-  router.get('/', (_req, res) => {
-    const rows = db
-      .select()
-      .from(transactions)
-      .orderBy(desc(transactions.date), desc(transactions.id))
-      .all();
-    res.json(rows);
+  router.get('/', (req, res) => {
+    const filters = transactionFiltersSchema.parse(req.query);
+    res.json(listTransactions(db, filters));
   });
 
   router.post('/', (req, res) => {
