@@ -23,19 +23,26 @@ describe('normalizeHeader', () => {
 
 describe('normalizeAmount', () => {
   it.each([
-    ['42.50', { cents: 4250, negative: false }],
-    ['-42.50', { cents: 4250, negative: true }],
-    ['(42.50)', { cents: 4250, negative: true }],
-    ['$1,234.56', { cents: 123456, negative: false }],
-    ['($1,234.56)', { cents: 123456, negative: true }],
-    ['$ 12', { cents: 1200, negative: false }],
-    ['0.07', { cents: 7, negative: false }],
+    ['42.50', { ok: true, cents: 4250, negative: false }],
+    ['-42.50', { ok: true, cents: 4250, negative: true }],
+    ['(42.50)', { ok: true, cents: 4250, negative: true }],
+    ['$1,234.56', { ok: true, cents: 123456, negative: false }],
+    ['($1,234.56)', { ok: true, cents: 123456, negative: true }],
+    ['$ 12', { ok: true, cents: 1200, negative: false }],
+    ['0.07', { ok: true, cents: 7, negative: false }],
   ])('parses %p', (raw, expected) => {
     expect(normalizeAmount(raw)).toEqual(expected);
   });
 
-  it.each(['', 'abc', '1.2.3', '--5', '()'])('rejects %p', (raw) => {
-    expect(normalizeAmount(raw)).toBeNull();
+  it.each(['', 'abc', '1.2.3', '--5', '()', '(-5)', '(-0)'])(
+    'rejects %p as unparseable',
+    (raw) => {
+      expect(normalizeAmount(raw)).toEqual({ ok: false, reason: 'unparseable' });
+    },
+  );
+
+  it.each(['0', '0.00', '$0', '(0)', '-0.00', '( $0.00 )'])('rejects %p as zero', (raw) => {
+    expect(normalizeAmount(raw)).toEqual({ ok: false, reason: 'zero' });
   });
 });
 
@@ -142,6 +149,12 @@ describe('buildImportRow', () => {
     const row = buildImportRow({ date: '2026-08-01', description: 'Freebie', amount: '$0.00' }, 9);
     expect(row.status).toBe('invalid');
     if (row.status === 'invalid') expect(row.errors.join(' ')).toMatch(/greater than zero/i);
+  });
+
+  it('reports an ambiguous parenthesized negative as unrecognized, not zero', () => {
+    const row = buildImportRow({ date: '2026-08-01', description: 'Odd', amount: '(-0)' }, 10);
+    expect(row.status).toBe('invalid');
+    if (row.status === 'invalid') expect(row.errors.join(' ')).toMatch(/unrecognized amount/i);
   });
 
   it('flags an unrecognized explicit type', () => {

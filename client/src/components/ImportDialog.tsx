@@ -43,8 +43,9 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Unfiltered list, used to flag probable re-imports in the preview. Preview
-  // is gated on it so duplicate detection never silently runs against nothing.
-  const { data: existingTransactions } = useTransactions({});
+  // waits for it while loading; if it errors, importing stays possible but the
+  // preview says the duplicate check is off rather than silently skipping it.
+  const { data: existingTransactions, isError: duplicateCheckUnavailable } = useTransactions({});
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
@@ -57,14 +58,14 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
   };
 
   const handlePreview = () => {
-    if (existingTransactions === undefined) return; // button is disabled until loaded
+    if (existingTransactions === undefined && !duplicateCheckUnavailable) return; // still loading
     const result = parseCsv(csvText);
     if (!result.ok) {
       setInputError(result.error);
       return;
     }
     setInputError(null);
-    const rows = markDuplicates(result.rows, existingTransactions);
+    const rows = markDuplicates(result.rows, existingTransactions ?? []);
     setPreview({
       rows,
       // Duplicates start excluded; the user can still opt them in.
@@ -156,7 +157,10 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
               </Button>
               <Button
                 onClick={handlePreview}
-                disabled={csvText.trim() === '' || existingTransactions === undefined}
+                disabled={
+                  csvText.trim() === '' ||
+                  (existingTransactions === undefined && !duplicateCheckUnavailable)
+                }
               >
                 Preview
               </Button>
@@ -173,6 +177,12 @@ export function ImportDialog({ open, onOpenChange, onImport }: ImportDialogProps
                 </span>
               )}
             </p>
+            {duplicateCheckUnavailable && (
+              <p role="alert" className="text-muted-foreground text-sm">
+                Duplicate check unavailable — existing transactions couldn't be loaded, so
+                re-imports won't be flagged.
+              </p>
+            )}
             <div className="max-h-80 overflow-y-auto rounded-lg border">
               <Table>
                 <TableHeader>

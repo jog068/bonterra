@@ -30,11 +30,16 @@ export function normalizeHeader(header: string): CanonicalField | null {
   return HEADER_SYNONYMS[key] ?? null;
 }
 
+export type NormalizedAmount =
+  | { ok: true; cents: number; negative: boolean }
+  | { ok: false; reason: 'zero' | 'unparseable' };
+
 /**
  * Accepts bank-export amount spellings: "$1,234.56", "-42.50", "(42.50)".
- * Returns magnitude in cents plus whether the raw value was negative.
+ * On success, returns magnitude in cents plus whether the raw value was
+ * negative; on failure, says whether the value was zero or unrecognizable.
  */
-export function normalizeAmount(raw: string): { cents: number; negative: boolean } | null {
+export function normalizeAmount(raw: string): NormalizedAmount {
   let value = raw.trim();
   let negative = false;
 
@@ -42,30 +47,18 @@ export function normalizeAmount(raw: string): { cents: number; negative: boolean
   if (parenthesized) {
     negative = true;
     value = parenthesized[1].trim();
-    if (value.startsWith('-')) return null; // "(-5)" is ambiguous; reject
+    // "(-5)" is ambiguous; reject
+    if (value.startsWith('-')) return { ok: false, reason: 'unparseable' };
   } else if (value.startsWith('-')) {
     negative = true;
     value = value.slice(1).trim();
   }
   value = value.replace(/^\$\s*/, '').replace(/,/g, '');
 
-  if (!AMOUNT_RE.test(value)) return null;
-  const total = dollarsToCents(value);
-  if (total === 0) return null;
-  return { cents: total, negative };
-}
-
-/** True when the raw value parses as an amount but equals zero. */
-function isZeroAmount(raw: string): boolean {
-  const value = raw
-    .trim()
-    .replace(/^\((.*)\)$/, '$1')
-    .trim()
-    .replace(/^-/, '')
-    .trim()
-    .replace(/^\$\s*/, '')
-    .replace(/,/g, '');
-  return AMOUNT_RE.test(value) && Number(value) === 0;
+  if (!AMOUNT_RE.test(value)) return { ok: false, reason: 'unparseable' };
+  const cents = dollarsToCents(value);
+  if (cents === 0) return { ok: false, reason: 'zero' };
+  return { ok: true, cents, negative };
 }
 
 /** Accepts YYYY-MM-DD or M/D/YYYY (US bank exports); returns YYYY-MM-DD. */
@@ -115,9 +108,9 @@ export function buildImportRow(
 
   const rawAmount = record.amount ?? '';
   const amount = normalizeAmount(rawAmount);
-  if (!amount) {
+  if (!amount.ok) {
     errors.push(
-      isZeroAmount(rawAmount)
+      amount.reason === 'zero'
         ? 'Amount must be greater than zero'
         : `Unrecognized amount "${rawAmount}"`,
     );
@@ -129,13 +122,13 @@ export function buildImportRow(
   if (rawType) {
     type = normalizeType(rawType);
     if (!type) errors.push(`Unrecognized type "${rawType}"`);
-  } else if (amount) {
+  } else if (amount.ok) {
     type = amount.negative ? 'expense' : 'income';
   }
 
   const category = (record.category ?? '').trim() || 'Other';
 
-  if (errors.length > 0 || !date || !amount || !type) {
+  if (errors.length > 0 || !date || !amount.ok || !type) {
     return { index, status: 'invalid', errors };
   }
 

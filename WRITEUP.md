@@ -16,7 +16,7 @@ SQLite via Drizzle (`better-sqlite3`): the committed migration runs on boot and 
 
 ## How I used AI tools
 
-I worked decision-first: before any code, I had Claude interrogate the spec and my stack choices round by round (persistence, money representation, filter semantics, enhancement scope), so ambiguities were resolved on purpose rather than discovered mid-build. Implementation then went ticket by ticket, test-first at five pre-agreed seams: schemas, the WHERE builder, summary math, the CSV normalizer, and duplicate keys — 82 tests, each written red before the implementation. Each slice was verified in a real browser before committing.
+I worked decision-first: before any code, I had Claude interrogate the spec and my stack choices round by round (persistence, money representation, filter semantics, enhancement scope), so ambiguities were resolved on purpose rather than discovered mid-build. Implementation then went ticket by ticket, test-first at five pre-agreed seams: schemas, the WHERE builder, summary math, the CSV normalizer, and duplicate keys — 91 tests, each written red before the implementation. Each slice was verified in a real browser before committing.
 
 Where I steered: the shadcn CLI now ships a Base UI registry that no longer includes the react-hook-form `<Form>` wrapper my plan assumed — we read the generated source and wired RHF manually against `field.tsx` instead. AI's first pass at negative-amount parsing had a convoluted branch (`negative = !parenthesized && true`) that I had rewritten. When `markDuplicates` produced a type error in a test, the right fix was strengthening the function's return type, not loosening the test — I made sure it went that way.
 
